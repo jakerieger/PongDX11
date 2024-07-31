@@ -13,7 +13,7 @@ extern void ExitGame() noexcept;
 
 static float g_FrameRate            = 0.f;
 static int g_FrameCount             = 0;
-static constexpr int kMaxFrameCount = 30;
+static constexpr float g_UpdateFreq = 80;  // 80% current frame rate
 
 Game::Game() noexcept(false) {
     m_pDeviceResources = std::make_unique<DX::DeviceResources>();
@@ -29,7 +29,7 @@ void Game::Initialize(HWND window, const int width, const int height) {
     m_pDeviceResources->CreateWindowSizeDependentResources();
     CreateWindowSizeDependentResources();
 
-    CreateDirect2DResources();
+    CreateD2DResources();
 }
 
 void Game::Tick() {
@@ -42,7 +42,9 @@ void Game::Tick() {
     const auto end = std::chrono::high_resolution_clock::now();
     const std::chrono::duration<float, std::milli> elapsed = end - start;
 
-    if (g_FrameCount >= kMaxFrameCount) {
+    static auto maxFrameCount = (100.f / g_UpdateFreq) * (1000.f / elapsed.count());
+
+    if (g_FrameCount >= maxFrameCount) {
         g_FrameCount = 0;
         g_FrameRate  = 1000.f / elapsed.count();
     }
@@ -52,6 +54,9 @@ void Game::Tick() {
 
 void Game::OnDeviceLost() {
     // Cleaup code here
+    m_pD2DRenderTarget.Reset();
+    m_pD2DFactory.Reset();
+    m_pDWriteFactory.Reset();
 }
 
 void Game::OnDeviceRestored() {
@@ -77,8 +82,12 @@ void Game::OnResuming() {
 }
 
 void Game::OnWindowMoved() {
+    // const auto [left, top, right, bottom] = m_pDeviceResources->GetOutputSize();
+    // m_pDeviceResources->WindowSizeChanged(right, bottom);
+    //
+
     const auto [left, top, right, bottom] = m_pDeviceResources->GetOutputSize();
-    m_pDeviceResources->WindowSizeChanged(right, bottom);
+    OnWindowSizeChanged(right, bottom);
 }
 
 void Game::OnDisplayChange() {
@@ -86,11 +95,15 @@ void Game::OnDisplayChange() {
 }
 
 void Game::OnWindowSizeChanged(int width, int height) {
+    if (m_pD2DRenderTarget) {
+        m_pD2DRenderTarget.Reset();
+    }
+
     if (!m_pDeviceResources->WindowSizeChanged(width, height))
         return;
-
     CreateWindowSizeDependentResources();
-    // TODO: Game window is being resized.
+
+    CreateD2DSurface();
 }
 
 void Game::GetDefaultSize(int& width, int& height) const {
@@ -117,22 +130,43 @@ void Game::Render() {
     m_pDeviceResources->GetD3DDeviceContext()->Flush();
 
     RenderInterface();
-
     m_pDeviceResources->Present();
 }
 
-void Game::RenderInterface() {
-    m_pRenderTarget->BeginDraw();
-    m_pRenderTarget->Clear(D2D1::ColorF(0, 0.f));
+void Game::RenderInterface() const {
+    if (m_pD2DRenderTarget) {
+        m_pD2DRenderTarget->BeginDraw();
 
-    // UI rendering code here
-    ID2D1SolidColorBrush* brush = nullptr;
-    DX::ThrowIfFailed(
-      m_pRenderTarget->CreateSolidColorBrush(D2D1_COLOR_F(1.f, 0.f, 0.f, 1.f), &brush));
-    m_pRenderTarget->DrawRectangle({0, 0, 100, 100}, brush);
-    brush->Release();
+        // UI rendering code here
+        ID2D1SolidColorBrush* brush = nullptr;
+        DX::ThrowIfFailed(
+          m_pD2DRenderTarget->CreateSolidColorBrush(D2D1_COLOR_F(1.f, 1.f, 1.f, 1.f), &brush));
 
-    DX::ThrowIfFailed(m_pRenderTarget->EndDraw());
+        {  // FPS counter
+            const auto fmt = std::format("fRate: {:.2f}", g_FrameRate);
+            std::wstring fpsCounter;
+            ANSIToWide(fmt, fpsCounter);
+            m_pD2DRenderTarget->DrawText(fpsCounter.c_str(),
+                                         wcslen(fpsCounter.c_str()),
+                                         m_pTextFormat.Get(),
+                                         D2D1::RectF(20, 20, 200, 50),
+                                         brush);
+        }
+
+        {  // Frame time counter
+            const auto fmt = std::format("fTime: {:.2f} ms", 1000.f / g_FrameRate);
+            std::wstring frameTime;
+            ANSIToWide(fmt, frameTime);
+            m_pD2DRenderTarget->DrawText(frameTime.c_str(),
+                                         wcslen(frameTime.c_str()),
+                                         m_pTextFormat.Get(),
+                                         D2D1::RectF(20, 40, 400, 50),
+                                         brush);
+        }
+
+        brush->Release();
+        DX::ThrowIfFailed(m_pD2DRenderTarget->EndDraw());
+    }
 }
 
 void Game::Clear() {
@@ -152,18 +186,49 @@ void Game::Clear() {
 }
 
 void Game::CreateDeviceDependentResources() {
-    auto device  = m_pDeviceResources->GetD3DDevice();
-    auto context = m_pDeviceResources->GetD3DDeviceContext();
+    const auto device  = m_pDeviceResources->GetD3DDevice();
+    const auto context = m_pDeviceResources->GetD3DDeviceContext();
+
+    D3D11_BLEND_DESC blendDesc                      = {};
+    blendDesc.RenderTarget[0].BlendEnable           = TRUE;
+    blendDesc.RenderTarget[0].SrcBlend              = D3D11_BLEND_SRC_ALPHA;
+    blendDesc.RenderTarget[0].DestBlend             = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDesc.RenderTarget[0].BlendOp               = D3D11_BLEND_OP_ADD;
+    blendDesc.RenderTarget[0].SrcBlendAlpha         = D3D11_BLEND_ONE;
+    blendDesc.RenderTarget[0].DestBlendAlpha        = D3D11_BLEND_ZERO;
+    blendDesc.RenderTarget[0].BlendOpAlpha          = D3D11_BLEND_OP_ADD;
+    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+    ID3D11BlendState* blendState = nullptr;
+    DX::ThrowIfFailed(device->CreateBlendState(&blendDesc, &blendState));
+    context->OMSetBlendState(blendState, nullptr, 0xFFFFFFFF);
+    blendState->Release();
 }
 
 void Game::CreateWindowSizeDependentResources() {}
 
-void Game::CreateDirect2DResources() {
+void Game::CreateD2DResources() {
     DX::ThrowIfFailed(
       D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_PPV_ARGS(&m_pD2DFactory)));
     DX::ThrowIfFailed(
       DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), &m_pDWriteFactory));
 
+    CreateD2DSurface();
+
+    DX::ThrowIfFailed(m_pDWriteFactory->CreateTextFormat(L"Chakra Petch",
+                                                         nullptr,
+                                                         DWRITE_FONT_WEIGHT_NORMAL,
+                                                         DWRITE_FONT_STYLE_NORMAL,
+                                                         DWRITE_FONT_STRETCH_NORMAL,
+                                                         16.f,
+                                                         L"en-us",
+                                                         &m_pTextFormat));
+
+    DX::ThrowIfFailed(m_pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING));
+    DX::ThrowIfFailed(m_pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR));
+}
+
+void Game::CreateD2DSurface() {
     IDXGISurface* surface;
     DX::ThrowIfFailed(m_pDeviceResources->GetSwapChain()->GetBuffer(0, IID_PPV_ARGS(&surface)));
 
@@ -174,6 +239,6 @@ void Game::CreateDirect2DResources() {
       0);
 
     DX::ThrowIfFailed(
-      m_pD2DFactory->CreateDxgiSurfaceRenderTarget(surface, &props, &m_pRenderTarget));
+      m_pD2DFactory->CreateDxgiSurfaceRenderTarget(surface, &props, &m_pD2DRenderTarget));
     surface->Release();
 }

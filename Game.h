@@ -39,16 +39,21 @@ public:
 private:
     void Update(const DX::StepTimer& timer);
     void Render();
-    void RenderInterface();
+
+    /// Renders the UI drawn by Direct2D
+    void RenderInterface() const;
+
     void Clear();
     void CreateDeviceDependentResources();
     void CreateWindowSizeDependentResources();
-    void CreateDirect2DResources();
+    void CreateD2DResources();
+    void CreateD2DSurface();
 
     std::unique_ptr<DX::DeviceResources> m_pDeviceResources;
     DX::StepTimer m_Timer;
 
     ComPtr<ID2D1Factory> m_pD2DFactory;
     ComPtr<IDWriteFactory> m_pDWriteFactory;
-    ComPtr<ID2D1RenderTarget> m_pRenderTarget;
+    ComPtr<IDWriteTextFormat> m_pTextFormat;
+    ComPtr<ID2D1RenderTarget> m_pD2DRenderTarget;
 };
