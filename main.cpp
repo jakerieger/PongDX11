@@ -15,21 +15,20 @@ __declspec(dllexport) DWORD NvOptimusEnablement                  = 0x00000001;
 __declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
 }
 
-LPCSTR g_szAppName = "Pong | FPS: 60.00 <DX11>";
-int ass            = 1;
-
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 namespace {
+    auto g_AppName = "Pong | FPS: 60.00 <DX11>";
     std::unique_ptr<Game> g_Game;
-}
+}  // namespace
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance,
                     _In_opt_ HINSTANCE hPrevInstance,
                     _In_ LPWSTR lpCmdLine,
-                    _In_ int nCmdShow) {
+                    _In_ int nShowCmd) {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
+    UNREFERENCED_PARAMETER(nShowCmd);
 
     if (!::XMVerifyCPUSupport())
         return 1;
@@ -66,7 +65,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
 
     HWND hwnd = ::CreateWindowEx(WS_EX_TOPMOST,
                                  "PongDX11Class",
-                                 g_szAppName,
+                                 g_AppName,
                                  WS_POPUP,
                                  CW_USEDEFAULT,
                                  CW_USEDEFAULT,
