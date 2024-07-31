@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.29)
 project(PongDX11)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_executable(PongDX11 WIN32
         main.cpp
@@ -21,6 +22,8 @@ target_link_libraries(PongDX11 PRIVATE
         d3d11.lib
         dxgi.lib
         dxguid.lib
+        d2d1.lib
+        dwrite.lib
         uuid.lib
         kernel32.lib
         user32.lib
@@ -31,3 +34,7 @@ target_link_libraries(PongDX11 PRIVATE
         oleaut32.lib
 )
 target_link_libraries(PongDX11 PRIVATE DirectXTK)
+
+add_custom_command(TARGET PongDX11 PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/data ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data)

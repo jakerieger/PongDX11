@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#pragma warning(disable : 4996)
 
 #include <winsdkver.h>
 #ifndef _WIN32_WINNT
@@ -13,9 +14,7 @@
 // Use the C++ standard templated min/max
 #define NOMINMAX
 
-// DirectX apps don't need GDI
-#define NODRAWTEXT
-#define NOGDI
+// // DirectX apps don't need GDI
 #define NOBITMAP
 
 // Include <mcx.h> if you need this
@@ -30,6 +29,9 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include <dwrite.h>
+#include <d2d1.h>
+
 #include <wrl/client.h>
 
 #include <d3d11_1.h>
@@ -40,11 +42,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <codecvt>
 #include <cstdint>
 #include <cstdio>
 #include <cwchar>
 #include <exception>
 #include <iterator>
+#include <locale>
 #include <memory>
 #include <stdexcept>
 #include <system_error>
@@ -79,3 +83,13 @@ namespace DX {
         }
     }
 }  // namespace DX
+
+inline void WideToANSI(const std::wstring& value, std::string& converted) {
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    converted = converter.to_bytes(value);
+}
+
+inline void ANSIToWide(const std::string& value, std::wstring& converted) {
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    converted = converter.from_bytes(value);
+}

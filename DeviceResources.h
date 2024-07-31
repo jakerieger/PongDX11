@@ -50,8 +50,10 @@ namespace DX
         RECT GetOutputSize() const noexcept { return m_outputSize; }
 
         // Direct3D Accessors.
-        auto                    GetD3DDevice() const noexcept           { return m_d3dDevice.Get(); }
-        auto                    GetD3DDeviceContext() const noexcept    { return m_d3dContext.Get(); }
+        auto GetD3DDevice() const noexcept {
+            return m_d3dDevice.Get();
+        }
+        auto GetD3DDeviceContext() const noexcept    { return m_d3dContext.Get(); }
         auto                    GetSwapChain() const noexcept           { return m_swapChain.Get(); }
         auto                    GetDXGIFactory() const noexcept         { return m_dxgiFactory.Get(); }
         HWND                    GetWindow() const noexcept              { return m_window; }

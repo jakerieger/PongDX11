@@ -39,10 +39,16 @@ public:
 private:
     void Update(const DX::StepTimer& timer);
     void Render();
+    void RenderInterface();
     void Clear();
     void CreateDeviceDependentResources();
     void CreateWindowSizeDependentResources();
+    void CreateDirect2DResources();
 
-    std::unique_ptr<DX::DeviceResources> m_DeviceResources;
+    std::unique_ptr<DX::DeviceResources> m_pDeviceResources;
     DX::StepTimer m_Timer;
+
+    ComPtr<ID2D1Factory> m_pD2DFactory;
+    ComPtr<IDWriteFactory> m_pDWriteFactory;
+    ComPtr<ID2D1RenderTarget> m_pRenderTarget;
 };

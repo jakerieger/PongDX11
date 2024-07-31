@@ -4,7 +4,6 @@
 #include <chrono>
 
 #pragma warning(disable : 4061)
-#pragma warning(disable : 4996)
 
 using namespace DirectX;
 
@@ -18,7 +17,7 @@ __declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 namespace {
-    auto g_AppName = "Pong | FPS: 60.00 <DX11>";
+    auto g_AppName = "Pong <DX11>";
     std::unique_ptr<Game> g_Game;
 }  // namespace
 
@@ -91,19 +90,12 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
     // Main msg loop
     MSG msg = {};
     while (WM_QUIT != msg.message) {
-        auto start = std::chrono::high_resolution_clock::now();
         if (::PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             ::TranslateMessage(&msg);
             ::DispatchMessage(&msg);
         } else {
             g_Game->Tick();
         }
-        auto end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float, std::milli> elapsed = end - start;
-
-        auto fR  = 1000.f / elapsed.count();
-        auto fmt = std::format("Pong | FPS: {:.2f} <DX11>", fR);
-        ::SetWindowTextA(hwnd, fmt.c_str());
     }
 
     g_Game.reset();
