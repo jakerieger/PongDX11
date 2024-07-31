@@ -11,9 +11,9 @@ using namespace DirectX;
 
 extern void ExitGame() noexcept;
 
-static float g_FrameRate            = 0.f;
-static int g_FrameCount             = 0;
-static constexpr float g_UpdateFreq = 80;  // 80% current frame rate
+static float g_FrameRate           = 0.f;
+static int g_FrameCount            = 0;
+static constexpr float kUpdateFreq = 0.8f;  // 80% current frame rate
 
 Game::Game() noexcept(false) {
     m_pDeviceResources = std::make_unique<DX::DeviceResources>();
@@ -42,7 +42,7 @@ void Game::Tick() {
     const auto end = std::chrono::high_resolution_clock::now();
     const std::chrono::duration<float, std::milli> elapsed = end - start;
 
-    static auto maxFrameCount = (100.f / g_UpdateFreq) * (1000.f / elapsed.count());
+    static auto maxFrameCount = kUpdateFreq * (1000.f / elapsed.count());
 
     if (g_FrameCount >= maxFrameCount) {
         g_FrameCount = 0;
