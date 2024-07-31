@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Game.h"
 
 #include <chrono>
 
@@ -18,6 +19,10 @@ LPCSTR g_szAppName = "Pong | FPS: 60.00 <DX11>";
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
+namespace {
+    std::unique_ptr<Game> g_Game;
+}
+
 int WINAPI wWinMain(_In_ HINSTANCE hInstance,
                     _In_opt_ HINSTANCE hPrevInstance,
                     _In_ LPWSTR lpCmdLine,
@@ -32,7 +37,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
     if (FAILED(hr))
         return 1;
 
-    // g_game = std::make_unique<Game>();
+    g_Game = std::make_unique<Game>();
 
     // Register class and create window
 
@@ -51,8 +56,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
         return 1;
 
     // Create window
-    int w = 1280, h = 720;
-    // g_game->GetDefaultSize(w, h);
+    int w, h;
+    g_Game->GetDefaultSize(w, h);
 
     RECT rc = {0, 0, static_cast<LONG>(w), static_cast<LONG>(h)};
 
@@ -69,7 +74,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
                                  nullptr,
                                  nullptr,
                                  hInstance,
-                                 /*g_game.get()*/ nullptr);
+                                 g_Game.get());
     // TODO: Change to CreateWindowExW(WS_EX_TOPMOST, L"PongDX11WindowClass",
     // g_szAppName, WS_POPUP, to default to fullscreen.
 
@@ -81,7 +86,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
 
     ::GetClientRect(hwnd, &rc);
 
-    // g_game->Initialize(hwnd, rc.right - rc.left, rc.bottom - rc.top);
+    g_Game->Initialize(hwnd, rc.right - rc.left, rc.bottom - rc.top);
 
     // Main message loop
     MSG msg = {};
@@ -91,7 +96,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
             ::TranslateMessage(&msg);
             ::DispatchMessage(&msg);
         } else {
-            // g_game->Tick();
+            g_Game->Tick();
         }
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<float, std::milli> elapsed = end - start;
@@ -101,7 +106,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
         ::SetWindowTextA(hwnd, fmt.c_str());
     }
 
-    // g_game.reset();
+    g_Game.reset();
 
     ::CoUninitialize();
 
